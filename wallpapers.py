@@ -3,6 +3,7 @@ import os
 import praw
 import random
 import urllib
+import datetime
 
 
 r = praw.Reddit(user_agent='joeapplication')
@@ -30,4 +31,7 @@ directory = os.getcwd() + '/'
 setup = 'file://' + directory + imageName
 os.system("DISPLAY=:0 GSETTINGS_BACKEND=dconf gsettings set org.gnome.desktop.background picture-uri '%s'" % (setup))
 
-
+f = open('log.txt','a')
+log = "Image: " + imageName + ", Time: " + str(datetime.datetime.now()) + '\n'
+f.writelines(log)
+f.close()
