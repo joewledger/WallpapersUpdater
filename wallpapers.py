@@ -2,52 +2,52 @@
 import os
 import praw
 import random
-import urllib.request
+import urllib
 import datetime
-import platform
+from enum import Enum
+import itertools
 
 
-r = praw.Reddit(user_agent='joeapplication')
-print("Downloading links")
-wallpapers = r.get_subreddit('wallpapers').get_top_from_week(limit=25)
-earth = r.get_subreddit('earthporn').get_top_from_week(limit=25)
-minimal = r.get_subreddit('minimalwallpaper').get_top_from_year(limit=20)
-links = []
-for w in wallpapers: links.append(str(w.url))
-for e in earth: links.append(str(e.url))
-for m in minimal: links.append(str(m.url))
-for l in links:
-	if(l.find("i.imgur") == -1 and l.find("ppcdn.500px") == -1):
-		links.remove(l)
-url = links[random.randint(0,len(links) - 1)]
-imageName = url.replace("http://i.imgur.com/","").replace("http://ppcdn.500px.org/","").replace("/","")
-f = open(imageName, "wb")
-print(imageName)
-print("Downloading image")
-f.write(urllib.request.urlopen(url).read())
-f.close()
+class Status(Enum):
+	success = 0
+	failure = 1
+	
 
-op_sys = platform.system()
+def main():
+	savedir = "/home/joe/Pictures/Wallpapers"
+	subreddits = ['earthporn','minimalwallpaper','wallpapers']
+	image_url = find_wallpaper(subreddits)
+	status = Status.failure
+	num_tries = 0
+	while(num_tries < 5 and status == Status.failure):
+		image_uri, status = download_wallpaper(image_url,savedir)
+		num_tries += 1
+	log(image_uri,status)
+	if(status == Status.success):
+		change_wallpaper(image_uri,status)
+	
+def find_wallpaper(subreddits):	
+	agent = praw.Reddit(user_agent='joeapplication')
+	wallpapers = itertools.chain.from_iterable([agent.get_subreddit(x).get_top_from_week(limit=25) for x in subreddits])
+	urls = [str(wallpaper.url) for wallpaper in wallpapers]
+	return random.choice(urls)
 
-if(op_sys == "Linux"):
-	directory = os.getcwd() + '/'
-	setup = 'file://' + directory + imageName
-	os.system("DISPLAY=:0 GSETTINGS_BACKEND=dconf gsettings set org.gnome.desktop.background picture-uri '%s'" % (setup))
+def download_wallpaper(url,savedir):
+	image_name = url[url.rfind("/") + 1:]
+	save_location = "%s%s" % (savedir,image_name)
+	try:
+		file_saver = urllib.URLopener()
+		file_saver.retrieve(url, save_location)
+		return save_location, Status.success
+	except:
+		return save_location, Status.failure
+	
+def log(image_uri,status):
+	return None
 
-if(op_sys == "Windows"):
-	directory = os.getcwd() + '\\'
-	setup = directory + imageName
-	cmd1 = 'reg add "HKCU\Control Panel\Desktop" /v Wallpaper /t REG_SZ /f /d "%s"' % (setup)
-	os.system(cmd1)
+def change_wallpaper(image_uri,status):
+	filepath = "file://%s" % image_uri
+	os.system('gsettings set org.cinnamon.desktop.background picture-uri "%s"' % filepath)
 
-
-
-f = open('log.txt','a')
-log = "Image: " + imageName + ", Time: " + str(datetime.datetime.now()) + '\n'
-f.writelines(log)
-f.close()
-
-if(op_sys == "Windows"):
-	cmd2 = "%SystemRoot%\System32\RUNDLL32.EXE user32.dll, UpdatePerUserSystemParameters"
-	print(cmd2)
-	os.system(cmd2)
+if __name__ == '__main__':
+	main()
