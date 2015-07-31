@@ -3,11 +3,11 @@ import os
 import praw
 import random
 import urllib
-import datetime
 from enum import Enum
 import itertools
 import time
 import argparse
+from crontab import CronTab
 
 
 class Status(Enum):
@@ -17,34 +17,65 @@ class Status(Enum):
     unchanged_wallpaper = 3
     failed_download = 4
     no_suitable_url = 5
-    enter_control = 6
+    find_wallpaper = 6
     bad_arguments = 7
+    install_crontab = 8
+    crontab_success = 9
+    crontab_failure = 10
 
 def main():
+    image_uri = ""
 
-    parser = argparse.ArgumentParser(description="An automatic desktop wallpaper updater.")
+    parser = argparse.ArgumentParser(description="An automatic desktop wallpaper updater.\nScrapes images from reddit.com wallpaper subreddits.")
     parser.add_argument('savedir',type=str,help="The directory to save wallpapers and log to.")
-    parser.add_argument('--subreddits',nargs='+',type=str,help='The subreddits to scrape images from.')
-    parser.add_argument('--extensions',nargs='+',type=str,help='The allowed file extensions.')
+    parser.add_argument('--subreddits',nargs='+',type=str,help='The subreddits to scrape images from.\nDefault are earthporn, minimalwallpaper, and wallpapers')
+    parser.add_argument('--extensions',nargs='+',type=str,help='The allowed file extensions.\nDefault are .jpg and .png')
+    parser.add_argument('--install_crontab',type=str,help='Installs program on user\'s crontab.\nOptions are minute, hour, day, week, or month')
 
     parser.set_defaults(subreddits=['earthporn','minimalwallpaper','wallpapers'],extensions=['.png','.jpg'])
 
     try:
         args = parser.parse_args()
-        savedir = args.savedir
-        subreddits = args.subreddits
-        file_extensions = args.extensions
-        status = Status.enter_control
+        status = (Status.find_wallpaper if args.install_crontab == None else Status.install_crontab)
     except:
         status = Status.bad_arguments
 
-    if(status == Status.enter_control):
-        image_url ,status = find_wallpaper(subreddits,file_extensions)
+    if(status == Status.install_crontab):
+        status = install_crontab(args)
+    if(status == Status.find_wallpaper):
+        image_url ,status = find_wallpaper(args.subreddits,args.extensions)
     if(status == Status.selected_url):
-        image_uri,status = download_wallpaper(image_url,savedir)
+        image_uri,status = download_wallpaper(image_url,args.savedir)
     if(status == Status.finished_download):
         status = change_wallpaper(image_uri)
-    log(image_uri,savedir,status)
+    try:
+        log(image_uri,args.savedir,status)
+    except:
+        pass
+
+def install_crontab(args):
+    cron_command = "DISPLAY=:0.0 /usr/bin/python %s %s --subreddits %s --extensions %s" % (os.path.realpath(__file__),args.savedir," ".join(x for x in args.subreddits)," ".join(y for y in args.extensions))
+    try:
+        cron = CronTab(user=True)
+        job = cron.new(command=cron_command)
+        if(args.install_crontab == 'minute'):
+            job.setall('*/1 * * * *')
+        elif(args.install_crontab == 'hour'):
+            job.setall('0 * * * *')
+        elif(args.install_crontab == 'day'):
+            job.setall('0 0 * * *')
+        elif(args.install_crontab == 'week'):
+            job.setall('0 0 0 * *')
+        elif(args.install_crontab == 'month'):
+            job.setall('0 0 0 0 *')
+        else:
+            return Status.crontab_failure
+        job.enable()
+        cron.write()
+        return Status.crontab_success
+    #0 * * * * DISPLAY=:0.0 /usr/bin/python $HOME/Programming/WallpapersUpdater/wallpapers.py /home/joe/Pictures/Wallpapers
+    except:
+        return Status.crontab_failure
 	
 def find_wallpaper(subreddits,file_extensions):
     agent = praw.Reddit(user_agent='joeapplication')
@@ -86,6 +117,8 @@ def log(image_uri,savedir,status):
     elif(status == Status.failed_download): status_message = "The wallpaper failed to download."
     elif(status == Status.no_suitable_url): status_message = "There were no suitable images that met the search criteria."
     elif(status == Status.bad_arguments): status_message = "The command line arguments were entered incorrectly."
+    elif(status == Status.crontab_success): status_message = "A new crontab entry was successfully added."
+    elif(status == Status.crontab_failure): status_message = "Failed to add new crontab entry."
     writer.write("Image_URI: %s\tStatus: %s\tDate: %s\tTime: %s\n" % (image_uri,status_message, time.strftime("%m/%d/%y"),time.strftime("%I:%M:%S")))
     writer.close()
 
