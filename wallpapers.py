@@ -73,7 +73,6 @@ def install_crontab(args):
         job.enable()
         cron.write()
         return Status.crontab_success
-    #0 * * * * DISPLAY=:0.0 /usr/bin/python $HOME/Programming/WallpapersUpdater/wallpapers.py /home/joe/Pictures/Wallpapers
     except:
         return Status.crontab_failure
 	
