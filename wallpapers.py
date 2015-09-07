@@ -27,12 +27,12 @@ def main():
     image_uri = ""
 
     parser = argparse.ArgumentParser(description="An automatic desktop wallpaper updater.\nScrapes images from reddit.com wallpaper subreddits.")
-    parser.add_argument('savedir',type=str,help="The directory to save wallpapers and log to.")
+    parser.add_argument('--savedir',type=str,help="The directory to save wallpapers and log to.")
     parser.add_argument('--subreddits',nargs='+',type=str,help='The subreddits to scrape images from.\nDefault are earthporn, minimalwallpaper, and wallpapers')
     parser.add_argument('--extensions',nargs='+',type=str,help='The allowed file extensions.\nDefault are .jpg and .png')
-    parser.add_argument('--install_crontab',type=str,help='Installs program on user\'s crontab.\nOptions are minute, hour, day, week, or month')
+    parser.add_argument('--install',type=str,help='Installs program on user\'s crontab.\nOptions are minute, hour, day, week, or month')
 
-    parser.set_defaults(subreddits=['earthporn','minimalwallpaper','wallpapers'],extensions=['.png','.jpg'])
+    parser.set_defaults(savedir='~/Pictures/Wallpapers',subreddits=['earthporn','minimalwallpaper','wallpapers'],extensions=['.png','.jpg'])
 
     try:
         args = parser.parse_args()
