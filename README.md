@@ -6,7 +6,7 @@ WallpapersUpdater currently only supports Linux Mint, although work is in progre
 ##How do I install and run WallpapersUpdater?
 WallpapersUpdater requires Python2.7, pip, and the following Python packages: praw, enum, argparse, and python-crontab.  
 To install the dependencies, type the following code into the command line.  
-`./install.sh`  
+`sudo ./install.sh`  
 To install WallpapersUpdater to your crontab with all the default options, type the following:  
 `python wallpapers.py --install hour`  
 To run WallpapersUpdater one time (get a new wallpaper without scheduling updates), type the following:  

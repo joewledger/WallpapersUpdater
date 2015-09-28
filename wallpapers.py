@@ -2,7 +2,7 @@
 import os
 import praw
 import random
-import urllib
+import urllib2
 from enum import Enum
 import itertools
 import time
@@ -26,17 +26,18 @@ class Status(Enum):
 def main():
     image_uri = ""
 
-    parser = argparse.ArgumentParser(description="An automatic desktop wallpaper updater.\nScrapes images from reddit.com wallpaper subreddits.")
+    parser = argparse.ArgumentParser(description="An automatic desktolp wallpaper updater.\nScrapes images from reddit.com wallpaper subreddits.")
     parser.add_argument('--savedir',type=str,help="The directory to save wallpapers and log to.")
     parser.add_argument('--subreddits',nargs='+',type=str,help='The subreddits to scrape images from.\nDefault are earthporn, minimalwallpaper, and wallpapers')
     parser.add_argument('--extensions',nargs='+',type=str,help='The allowed file extensions.\nDefault are .jpg and .png')
     parser.add_argument('--install',type=str,help='Installs program on user\'s crontab.\nOptions are minute, hour, day, week, or month')
 
-    parser.set_defaults(savedir='~/Pictures/Wallpapers',subreddits=['earthporn','minimalwallpaper','wallpapers'],extensions=['.png','.jpg'])
+    default_save_dir = "/".join(x for x in os.path.dirname(os.path.abspath(__file__)).split("/")[0:3]) + "/Pictures/Wallpapers"
+    parser.set_defaults(savedir=default_save_dir,subreddits=['earthporn','minimalwallpaper','wallpapers'],extensions=['.png','.jpg'])
 
     try:
         args = parser.parse_args()
-        status = (Status.find_wallpaper if args.install_crontab == None else Status.install_crontab)
+        status = (Status.find_wallpaper if not args.install else Status.install_crontab)
     except:
         status = Status.bad_arguments
 
@@ -77,7 +78,7 @@ def install_crontab(args):
         return Status.crontab_failure
 	
 def find_wallpaper(subreddits,file_extensions):
-    agent = praw.Reddit(user_agent='joeapplication')
+    agent = praw.Reddit(user_agent='wallpapers')
     wallpapers = itertools.chain.from_iterable([agent.get_subreddit(x).get_top_from_week(limit=25) for x in subreddits])
     urls = [str(wallpaper.url) for wallpaper in wallpapers]
     url = ""
@@ -92,8 +93,10 @@ def download_wallpaper(url,savedir):
     image_name = url[url.rfind("/") + 1:]
     save_location = "%s/%s" % (savedir,image_name)
     try:
-        file_saver = urllib.URLopener()
-        file_saver.retrieve(url, save_location)
+        response = urllib2.urlopen(url)
+        writer = open(save_location,"wb")
+        writer.write(response.read())
+        writer.close()
         return save_location, Status.finished_download
     except:
         return save_location, Status.failed_download
