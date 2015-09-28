@@ -38,6 +38,8 @@ def main():
     try:
         args = parser.parse_args()
         status = (Status.find_wallpaper if not args.install else Status.install_crontab)
+        if(not os.path.isdir(args.savedir)):
+            os.mkdir(args.savedir)
     except:
         status = Status.bad_arguments
 
